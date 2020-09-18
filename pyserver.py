@@ -7,6 +7,7 @@
 import os
 import re
 import logging
+import mimetypes
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import unquote
 
@@ -20,15 +21,16 @@ class S(BaseHTTPRequestHandler):
         # super().__init__(self, request, client_address, server) # <-- class S
         BaseHTTPRequestHandler.__init__(self, request, client_address, server)
 
-    def _set_response(self, status):
+    def _set_response(self, status, mimetype='text/html'):
         self.send_response(status)
-        self.send_header('Content-type', 'text/html; charset=utf-8')
+        self.send_header('Content-type', '%s; charset=utf-8' % mimetype)
         self.end_headers()
 
     def do_GET(self):
         # favicon.ico - 404 Not Found 무시
         if self.path.endswith('favicon.ico'):
             return
+
         # 환영 및 홈페이지 링크
         if self.path == '/':
             self._set_response(200)
@@ -46,7 +48,12 @@ class S(BaseHTTPRequestHandler):
                     # logging.info("POST request,\nPath: %s\nHeaders:\n%s\n\nBody:\n%s\n",
                     #             str(self.path), str(self.headers), post_data.decode('utf-8'))
                     logging.info("POST request,\nPath: %s\nBody:\n%s\n", str(self.path), self.post_data)
-                    self._set_response(200)
+                    # url로 주어진 파일 이름, 경로 또는 URL을 기반으로 파일 유형을 추출. 리턴값은 튜플
+                    mt = mimetypes.guess_type(self.path, strict=True)[0]
+                    if mt:
+                        self._set_response(200, mt)
+                    else:
+                        self._set_response(200)
                     self.wfile.write(file.read())
             except FileNotFoundError as err:
                 print(err, req_path)
